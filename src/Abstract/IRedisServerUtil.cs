@@ -55,8 +55,11 @@ public interface IRedisServerUtil
     [Pure]
     ValueTask<List<RedisKey>?> GetKeysByPrefixList(string redisKeyPrefix);
 
+    /// <summary>
+    /// Builds the key before calling RemoveByPrefix
     /// <inheritdoc cref="RemoveByPrefix(string, bool)"/>
-    ValueTask RemoveByPrefix(string cacheKey, string? prefix = null, bool fireAndForget = false);
+    /// </summary>
+    ValueTask RemoveByPrefix(string cacheKey, string? prefix, bool fireAndForget = false);
 
     /// <summary>
     /// Removes all keys that begin with the prefix.

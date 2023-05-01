@@ -144,7 +144,7 @@ public class RedisServerUtil : IRedisServerUtil
         return GetKeysByPrefixList(redisKeyPrefix);
     }
 
-    public ValueTask RemoveByPrefix(string cacheKey, string? prefix = null, bool fireAndForget = false)
+    public ValueTask RemoveByPrefix(string cacheKey, string? prefix, bool fireAndForget = false)
     {
         string redisPrefixKey = RedisUtil.BuildKey(cacheKey, prefix) + '*';
 
