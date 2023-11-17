@@ -9,7 +9,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-  services:
+    services:
      redis: 
        image: redis
        # Set health checks to wait until redis has started
