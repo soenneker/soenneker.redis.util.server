@@ -8,5 +8,5 @@
 ## Installation
 
 ```
-Install-Package Soenneker.Redis.Util.Server
+dotnet add package Soenneker.Redis.Util.Server
 ```
