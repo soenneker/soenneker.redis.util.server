@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Soenneker.Extensions.Task;
+using Soenneker.Extensions.ValueTask;
 using Soenneker.Redis.Client.Server.Abstract;
 using Soenneker.Redis.Util.Abstract;
 using Soenneker.Redis.Util.Server.Abstract;
@@ -25,7 +27,7 @@ public class RedisServerUtil : IRedisServerUtil
 
     public async ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string redisKeyPrefix) where T : class
     {
-        List<RedisKey>? keys = await GetKeysByPrefixList(redisKeyPrefix);
+        List<RedisKey>? keys = await GetKeysByPrefixList(redisKeyPrefix).NoSync();
 
         if (keys == null)
             return null;
@@ -36,7 +38,7 @@ public class RedisServerUtil : IRedisServerUtil
         {
             var redisKeyStr = redisKey.ToString();
 
-            var result = await _redisUtil.Get<T>(redisKeyStr);
+            var result = await _redisUtil.Get<T>(redisKeyStr).NoSync();
 
             if (result != null)
                 dictionary.TryAdd(redisKeyStr, result);
@@ -47,7 +49,7 @@ public class RedisServerUtil : IRedisServerUtil
 
     public async ValueTask<Dictionary<string, string>?> GetKeyValuesByPrefixWithoutDeserialization(string redisKeyPrefix)
     {
-        List<RedisKey>? keys = await GetKeysByPrefixList(redisKeyPrefix);
+        List<RedisKey>? keys = await GetKeysByPrefixList(redisKeyPrefix).NoSync();
 
         if (keys == null)
             return null;
@@ -58,7 +60,7 @@ public class RedisServerUtil : IRedisServerUtil
         {
             var redisKeyStr = redisKey.ToString();
 
-            string? result = await _redisUtil.GetString(redisKeyStr);
+            string? result = await _redisUtil.GetString(redisKeyStr).NoSync();
 
             if (result != null)
                 dictionary.TryAdd(redisKeyStr, result);
@@ -69,7 +71,7 @@ public class RedisServerUtil : IRedisServerUtil
 
     public async ValueTask<Dictionary<string, T>?> GetKeyValueHashesByPrefix<T>(string redisKeyPrefix, string field) where T : class
     {
-        List<RedisKey>? keys = await GetKeysByPrefixList(redisKeyPrefix);
+        List<RedisKey>? keys = await GetKeysByPrefixList(redisKeyPrefix).NoSync();
 
         if (keys == null)
             return null;
@@ -80,7 +82,7 @@ public class RedisServerUtil : IRedisServerUtil
         {
             var redisKeyStr = redisKey.ToString();
 
-            var result = await _redisUtil.GetHash<T>(redisKeyStr, field);
+            var result = await _redisUtil.GetHash<T>(redisKeyStr, field).NoSync();
 
             if (result != null)
                 dictionary.TryAdd(redisKeyStr, result);
@@ -109,7 +111,7 @@ public class RedisServerUtil : IRedisServerUtil
 
         var redisValue = new RedisValue(keyPattern);
 
-        IAsyncEnumerable<RedisKey> keys = (await _serverClient.GetClient()).KeysAsync(pattern: redisValue);
+        IAsyncEnumerable<RedisKey> keys = (await _serverClient.GetClient().NoSync()).KeysAsync(pattern: redisValue);
 
         return keys;
     }
@@ -122,14 +124,14 @@ public class RedisServerUtil : IRedisServerUtil
 
     public async ValueTask<List<RedisKey>?> GetKeysByPrefixList(string redisKeyPrefix)
     {
-        IAsyncEnumerable<RedisKey>? result = await GetKeysByPrefix(redisKeyPrefix);
+        IAsyncEnumerable<RedisKey>? result = await GetKeysByPrefix(redisKeyPrefix).NoSync();
 
         if (result == null)
             return null;
 
         var list = new List<RedisKey>();
 
-        await foreach (RedisKey item in result)
+        await foreach (RedisKey item in result.ConfigureAwait(false))
         {
             list.Add(item);
         }
@@ -153,7 +155,7 @@ public class RedisServerUtil : IRedisServerUtil
 
     public async ValueTask RemoveByPrefix(string redisPrefixKey, bool fireAndForget = false)
     {
-        List<RedisKey>? keys = await GetKeysByPrefixList(redisPrefixKey);
+        List<RedisKey>? keys = await GetKeysByPrefixList(redisPrefixKey).NoSync();
 
         if (keys == null)
             return;
@@ -166,7 +168,7 @@ public class RedisServerUtil : IRedisServerUtil
             {
                 var keyStr = key.ToString();
 
-                await _redisUtil.Remove(keyStr, fireAndForget);
+                await _redisUtil.Remove(keyStr, fireAndForget).NoSync();
             }
             catch (Exception e)
             {
@@ -181,7 +183,7 @@ public class RedisServerUtil : IRedisServerUtil
 
         try
         {
-            await (await _serverClient.GetClient()).FlushAllDatabasesAsync();
+            await (await _serverClient.GetClient().NoSync()).FlushAllDatabasesAsync().NoSync();
 
             _logger.LogDebug(">> RedisServerClient: Flushed successfully");
         }
