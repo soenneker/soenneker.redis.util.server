@@ -82,7 +82,7 @@ public class RedisServerUtil : IRedisServerUtil
         {
             var redisKeyStr = redisKey.ToString();
 
-            var result = await _redisUtil.GetHash<T>(redisKeyStr, field).NoSync();
+            T? result = await _redisUtil.GetHash<T>(redisKeyStr, field).NoSync();
 
             if (result != null)
                 dictionary.TryAdd(redisKeyStr, result);
@@ -111,7 +111,7 @@ public class RedisServerUtil : IRedisServerUtil
 
         var redisValue = new RedisValue(keyPattern);
 
-        IAsyncEnumerable<RedisKey> keys = (await _serverClient.GetClient().NoSync()).KeysAsync(pattern: redisValue);
+        IAsyncEnumerable<RedisKey> keys = (await _serverClient.Get().NoSync()).KeysAsync(pattern: redisValue);
 
         return keys;
     }
@@ -183,7 +183,7 @@ public class RedisServerUtil : IRedisServerUtil
 
         try
         {
-            await (await _serverClient.GetClient().NoSync()).FlushAllDatabasesAsync().NoSync();
+            await (await _serverClient.Get().NoSync()).FlushAllDatabasesAsync().NoSync();
 
             _logger.LogDebug(">> RedisServerClient: Flushed successfully");
         }
