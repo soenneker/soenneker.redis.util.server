@@ -1,7 +1,7 @@
 using Soenneker.Redis.Util.Server.Abstract;
 using Soenneker.Tests.FixturedUnit;
 using Xunit;
-using Xunit.Abstractions;
+
 
 namespace Soenneker.Redis.Util.Server.Tests;
 
@@ -13,7 +13,7 @@ public class RedisServerUtilTests : FixturedUnitTest
     }
 
     [Fact]
-    public async void Flush_should_flush()
+    public async System.Threading.Tasks.ValueTask Flush_should_flush()
     {
         var redisClient = Resolve<IRedisServerUtil>();
 
