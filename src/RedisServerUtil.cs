@@ -38,7 +38,7 @@ public class RedisServerUtil : IRedisServerUtil
         {
             var redisKeyStr = redisKey.ToString();
 
-            var result = await _redisUtil.Get<T>(redisKeyStr).NoSync();
+            T? result = await _redisUtil.Get<T>(redisKeyStr).NoSync();
 
             if (result != null)
                 dictionary.TryAdd(redisKeyStr, result);
@@ -111,9 +111,7 @@ public class RedisServerUtil : IRedisServerUtil
 
         var redisValue = new RedisValue(keyPattern);
 
-        IAsyncEnumerable<RedisKey> keys = (await _serverClient.Get().NoSync()).KeysAsync(pattern: redisValue);
-
-        return keys;
+        return (await _serverClient.Get().NoSync()).KeysAsync(pattern: redisValue);
     }
 
     public ValueTask<IAsyncEnumerable<RedisKey>?> GetKeysByPrefix(string cacheKey, string? prefix)
