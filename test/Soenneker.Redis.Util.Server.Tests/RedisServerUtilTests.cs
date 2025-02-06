@@ -2,7 +2,6 @@ using Soenneker.Redis.Util.Server.Abstract;
 using Soenneker.Tests.FixturedUnit;
 using Xunit;
 
-
 namespace Soenneker.Redis.Util.Server.Tests;
 
 [Collection("Collection")]
