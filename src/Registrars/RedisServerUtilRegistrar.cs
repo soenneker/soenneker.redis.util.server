@@ -16,18 +16,14 @@ public static class RedisServerUtilRegistrar
     /// </summary>
     public static IServiceCollection AddRedisServerUtilAsSingleton(this IServiceCollection services)
     {
-        services.AddRedisUtilAsSingleton()
-                .AddRedisServerClientAsSingleton()
-                .TryAddSingleton<IRedisServerUtil, RedisServerUtil>();
+        services.AddRedisServerClientAsSingleton().AddRedisUtilAsSingleton().TryAddSingleton<IRedisServerUtil, RedisServerUtil>();
 
         return services;
     }
 
     public static IServiceCollection AddRedisServerUtilAsScoped(this IServiceCollection services)
     {
-        services.AddRedisUtilAsSingleton()
-                .AddRedisServerClientAsSingleton()
-                .TryAddScoped<IRedisServerUtil, RedisServerUtil>();
+        services.AddRedisServerClientAsSingleton().AddRedisUtilAsScoped().TryAddScoped<IRedisServerUtil, RedisServerUtil>();
 
         return services;
     }

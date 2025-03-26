@@ -16,6 +16,6 @@ public class RedisServerUtilTests : FixturedUnitTest
     {
         var redisClient = Resolve<IRedisServerUtil>();
 
-       await redisClient.Flush();
+       await redisClient.Flush(CancellationToken);
     }
 }
