@@ -182,7 +182,9 @@ public sealed class RedisServerUtil : IRedisServerUtil
 
         try
         {
-            await (await _serverClient.Get(cancellationToken).NoSync()).FlushAllDatabasesAsync().NoSync();
+            IServer client = await _serverClient.Get(cancellationToken).NoSync();
+
+            await client.FlushAllDatabasesAsync().WaitAsync(cancellationToken).NoSync();
 
             _logger.LogDebug(">> RedisServerClient: Flushed successfully");
         }
