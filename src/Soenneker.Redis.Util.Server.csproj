@@ -46,6 +46,6 @@
     
     <ItemGroup>
       <PackageReference Include="Soenneker.Redis.Client.Server" Version="4.0.2095" />
-      <PackageReference Include="Soenneker.Redis.Util" Version="4.0.5083" />
+      <PackageReference Include="Soenneker.Redis.Util" Version="4.0.5084" />
     </ItemGroup>
 </Project>
