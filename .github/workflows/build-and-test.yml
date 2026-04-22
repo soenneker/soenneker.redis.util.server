@@ -38,7 +38,7 @@ jobs:
         run: dotnet build test/Soenneker.Redis.Util.Server.Tests/Soenneker.Redis.Util.Server.Tests.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Test
-        run: dotnet test test/Soenneker.Redis.Util.Server.Tests/Soenneker.Redis.Util.Server.Tests.csproj --configuration Release --no-build --no-restore --verbosity minimal
+        run: dotnet test --project test/Soenneker.Redis.Util.Server.Tests/Soenneker.Redis.Util.Server.Tests.csproj --configuration Release --no-build --no-restore --verbosity minimal
 
       - name: Pack
         run: dotnet pack src/Soenneker.Redis.Util.Server/Soenneker.Redis.Util.Server.csproj --configuration Release --no-build --no-restore --output . --verbosity minimal
