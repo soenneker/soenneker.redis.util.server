@@ -1,17 +1,16 @@
 using Soenneker.Redis.Util.Server.Abstract;
-using Soenneker.Tests.FixturedUnit;
-using Xunit;
+using Soenneker.Tests.HostedUnit;
 
 namespace Soenneker.Redis.Util.Server.Tests;
 
-[Collection("Collection")]
-public class RedisServerUtilTests : FixturedUnitTest
+[ClassDataSource<Host>(Shared = SharedType.PerTestSession)]
+public class RedisServerUtilTests : HostedUnitTest
 {
-    public RedisServerUtilTests(Fixture fixture, ITestOutputHelper output) : base(fixture, output)
+    public RedisServerUtilTests(Host host) : base(host)
     {
     }
 
-    [Fact]
+    [Test]
     public async System.Threading.Tasks.ValueTask Flush_should_flush()
     {
         var redisClient = Resolve<IRedisServerUtil>();
