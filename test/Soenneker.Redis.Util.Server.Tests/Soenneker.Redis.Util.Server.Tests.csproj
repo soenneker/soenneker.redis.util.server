@@ -16,20 +16,13 @@
         </Content>
     </ItemGroup>
 
-<<<<<<< HEAD
     <ItemGroup>
         <PackageReference Include="Soenneker.Tests.HostedUnit" Version="4.0.13" />
         <PackageReference Include="Soenneker.Utils.Test" Version="4.0.314" />
         <PackageReference Include="TUnit" Version="1.37.24" />
     </ItemGroup>
-=======
-    <ItemGroup><PackageReference Include="Soenneker.Tests.FixturedUnit" Version="4.0.2305" />
-        <PackageReference Include="Soenneker.Utils.Test" Version="4.0.315" />
-    <PackageReference Include="xUnit.v3" Version="3.2.2" /></ItemGroup>
->>>>>>> 51b745eb7deb4f896fd3de9023091c42179c8b2a
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\Soenneker.Redis.Util.Server\Soenneker.Redis.Util.Server.csproj" />
     </ItemGroup>
 </Project>
-
