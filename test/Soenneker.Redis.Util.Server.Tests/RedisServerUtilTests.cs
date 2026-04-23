@@ -15,6 +15,6 @@ public class RedisServerUtilTests : HostedUnitTest
     {
         var redisClient = Resolve<IRedisServerUtil>();
 
-       await redisClient.Flush(CancellationToken);
+       await redisClient.Flush(System.Threading.CancellationToken.None);
     }
 }
