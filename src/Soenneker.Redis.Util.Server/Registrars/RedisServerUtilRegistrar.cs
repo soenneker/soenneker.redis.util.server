@@ -21,6 +21,11 @@ public static class RedisServerUtilRegistrar
         return services;
     }
 
+    /// <summary>
+    /// Adds redis server util as scoped.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The result of the operation.</returns>
     public static IServiceCollection AddRedisServerUtilAsScoped(this IServiceCollection services)
     {
         services.AddRedisServerClientAsSingleton().AddRedisUtilAsScoped().TryAddScoped<IRedisServerUtil, RedisServerUtil>();

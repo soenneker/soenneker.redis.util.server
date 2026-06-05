@@ -19,6 +19,13 @@ public interface IRedisServerUtil
     [Pure]
     ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string cacheKey, string? prefix, CancellationToken cancellationToken = default) where T : class;
 
+    /// <summary>
+    /// Gets key values by prefix without deserialization.
+    /// </summary>
+    /// <param name="cacheKey">The cache key.</param>
+    /// <param name="prefix">The prefix.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task containing the result of the operation.</returns>
     [Pure]
     ValueTask<Dictionary<string, string>?> GetKeyValuesByPrefixWithoutDeserialization(string cacheKey, string? prefix, CancellationToken cancellationToken = default);
 
@@ -28,9 +35,23 @@ public interface IRedisServerUtil
     [Pure]
     ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string redisKeyPrefix, CancellationToken cancellationToken = default) where T : class;
 
+    /// <summary>
+    /// Gets key values by prefix without deserialization.
+    /// </summary>
+    /// <param name="redisKeyPrefix">The redis key prefix.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task containing the result of the operation.</returns>
     [Pure]
     ValueTask<Dictionary<string, string>?> GetKeyValuesByPrefixWithoutDeserialization(string redisKeyPrefix, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Gets key value hashes by prefix.
+    /// </summary>
+    /// <typeparam name="T">The T type.</typeparam>
+    /// <param name="redisKeyPrefix">The redis key prefix.</param>
+    /// <param name="field">The field.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task containing the result of the operation.</returns>
     [Pure]
     ValueTask<Dictionary<string, T>?> GetKeyValueHashesByPrefix<T>(string redisKeyPrefix, string field, CancellationToken cancellationToken = default) where T : class;
 
@@ -40,7 +61,13 @@ public interface IRedisServerUtil
     [Pure]
     ValueTask<List<RedisKey>?> GetKeysByPrefixList(string cacheKey, string? prefix, CancellationToken cancellationToken = default);
 
-    /// <inheritdoc cref="GetKeysByPrefix(string)"/>
+    /// <summary>
+    /// Gets keys by prefix.
+    /// </summary>
+    /// <param name="cacheKey">The cache key.</param>
+    /// <param name="prefix">The prefix.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task containing the result of the operation.</returns>
     [Pure]
     ValueTask<IAsyncEnumerable<RedisKey>?> GetKeysByPrefix(string cacheKey, string? prefix, CancellationToken cancellationToken = default);
 
@@ -57,9 +84,13 @@ public interface IRedisServerUtil
     ValueTask<List<RedisKey>?> GetKeysByPrefixList(string redisKeyPrefix, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Builds the key before calling RemoveByPrefix
-    /// <inheritdoc cref="RemoveByPrefix(string, bool)"/>
+    /// Removes by prefix.
     /// </summary>
+    /// <param name="cacheKey">The cache key.</param>
+    /// <param name="prefix">The prefix.</param>
+    /// <param name="fireAndForget">The fire and forget.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     ValueTask RemoveByPrefix(string cacheKey, string? prefix, bool fireAndForget = false, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -68,5 +99,10 @@ public interface IRedisServerUtil
     /// <remarks>Do not include asterisk!</remarks>
     ValueTask RemoveByPrefix(string redisPrefixKey, bool fireAndForget = false, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Executes the flush operation.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     ValueTask Flush(CancellationToken cancellationToken = default);
 }
