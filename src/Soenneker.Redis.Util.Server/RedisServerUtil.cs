@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -145,6 +146,7 @@ public sealed class RedisServerUtil : IRedisServerUtil
         IDatabase database = connection.GetDatabase();
         RedisValue pattern = string.IsNullOrEmpty(redisKeyPrefix) ? default : EnsureWildcard(redisKeyPrefix);
         long removed = 0;
+        var keys = new RedisKey[batchSize];
 
         foreach (System.Net.EndPoint endpoint in connection.GetEndPoints())
         {
@@ -152,21 +154,24 @@ public sealed class RedisServerUtil : IRedisServerUtil
             if (!server.IsConnected || server.IsReplica)
                 continue;
 
-            var keys = new List<RedisKey>(batchSize);
+            var keyCount = 0;
             await foreach (RedisKey key in server.KeysAsync(database.Database, pattern, pageSize: batchSize)
                                                  .WithCancellation(cancellationToken).ConfigureAwait(false))
             {
                 if (!shouldRemove(key))
                     continue;
 
-                keys.Add(key);
-                if (keys.Count < batchSize)
+                keys[keyCount++] = key;
+                if (keyCount < batchSize)
                     continue;
 
-                removed += await DeleteBatch(database, keys, cancellationToken).NoSync();
+                removed += await DeleteBatch(database, keys, keyCount, server.ServerType == ServerType.Cluster,
+                    cancellationToken).NoSync();
+                keyCount = 0;
             }
 
-            removed += await DeleteBatch(database, keys, cancellationToken).NoSync();
+            removed += await DeleteBatch(database, keys, keyCount, server.ServerType == ServerType.Cluster,
+                cancellationToken).NoSync();
         }
 
         return removed;
@@ -268,29 +273,45 @@ public sealed class RedisServerUtil : IRedisServerUtil
         return list;
     }
 
-    private static async ValueTask<long> DeleteBatch(IDatabase database, List<RedisKey> keys,
-        CancellationToken cancellationToken)
+    private static async ValueTask<long> DeleteBatch(IDatabase database, RedisKey[] keys, int keyCount,
+        bool isCluster, CancellationToken cancellationToken)
     {
-        if (keys.Count == 0)
+        if (keyCount == 0)
             return 0;
 
-        IBatch batch = database.CreateBatch();
-        var tasks = new Task<bool>[keys.Count];
-        for (var i = 0; i < keys.Count; i++)
-            tasks[i] = batch.KeyDeleteAsync(keys[i]);
-
-        keys.Clear();
-        batch.Execute();
-
-        bool[] results = await Task.WhenAll(tasks).WaitAsync(cancellationToken).NoSync();
-        long removed = 0;
-
-        foreach (bool result in results)
+        if (!isCluster)
         {
-            if (result)
-                removed++;
+            if (keyCount == keys.Length)
+                return await database.KeyDeleteAsync(keys).WaitAsync(cancellationToken).NoSync();
+
+            var finalKeys = new RedisKey[keyCount];
+            Array.Copy(keys, finalKeys, keyCount);
+            return await database.KeyDeleteAsync(finalKeys).WaitAsync(cancellationToken).NoSync();
         }
 
-        return removed;
+        IBatch batch = database.CreateBatch();
+        Task<bool>[] tasks = ArrayPool<Task<bool>>.Shared.Rent(keyCount);
+
+        try
+        {
+            for (var i = 0; i < keyCount; i++)
+                tasks[i] = batch.KeyDeleteAsync(keys[i]);
+
+            batch.Execute();
+            long removed = 0;
+
+            for (var i = 0; i < keyCount; i++)
+            {
+                if (await tasks[i].WaitAsync(cancellationToken).NoSync())
+                    removed++;
+            }
+
+            return removed;
+        }
+        finally
+        {
+            Array.Clear(tasks, 0, keyCount);
+            ArrayPool<Task<bool>>.Shared.Return(tasks);
+        }
     }
 }
