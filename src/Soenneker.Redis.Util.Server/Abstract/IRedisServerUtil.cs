@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using StackExchange.Redis;
@@ -78,7 +79,18 @@ public interface IRedisServerUtil
     [Pure]
     ValueTask<IAsyncEnumerable<RedisKey>?> GetKeysByPrefix(string redisKeyPrefix, CancellationToken cancellationToken = default);
 
-    /// <summary> Wraps <see cref="GetKeysByPrefix(string)"/>. Base method for <see cref="GetKeysByPrefixList(string)"/>.<para/>
+    /// <summary>
+    /// Scans primary Redis endpoints and removes matching keys in pipelined batches.
+    /// </summary>
+    /// <param name="redisKeyPrefix">An optional key prefix used to narrow the scan.</param>
+    /// <param name="shouldRemove">Determines whether a scanned key should be removed.</param>
+    /// <param name="batchSize">The maximum number of delete operations issued in one pipeline.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The number of keys removed.</returns>
+    ValueTask<long> RemoveByScan(string? redisKeyPrefix, Func<RedisKey, bool> shouldRemove, int batchSize = 500,
+        CancellationToken cancellationToken = default);
+
+    /// <summary> Wraps <see cref="GetKeysByPrefix(string, CancellationToken)"/>. Base method for <see cref="GetKeysByPrefixList(string, CancellationToken)"/>.<para/>
     /// Immediately resolves the Async IEnumerable.</summary>
     [Pure]
     ValueTask<List<RedisKey>?> GetKeysByPrefixList(string redisKeyPrefix, CancellationToken cancellationToken = default);

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Soenneker.Extensions.Task;
 using Soenneker.Extensions.ValueTask;
+using Soenneker.Redis.Client.Abstract;
 using Soenneker.Redis.Client.Server.Abstract;
 using Soenneker.Redis.Util.Abstract;
 using Soenneker.Redis.Util.Server.Abstract;
@@ -19,19 +20,22 @@ public sealed class RedisServerUtil : IRedisServerUtil
 {
     private readonly ILogger<RedisServerUtil> _logger;
     private readonly IRedisUtil _redisUtil;
+    private readonly IRedisClient _redisClient;
     private readonly IRedisServerClient _serverClient;
 
-    public RedisServerUtil(ILogger<RedisServerUtil> logger, IRedisUtil redisUtil, IRedisServerClient serverClient)
+    public RedisServerUtil(ILogger<RedisServerUtil> logger, IRedisUtil redisUtil, IRedisClient redisClient,
+        IRedisServerClient serverClient)
     {
         _serverClient = serverClient;
         _logger = logger;
         _redisUtil = redisUtil;
+        _redisClient = redisClient;
     }
 
-    public async ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string redisKeyPrefix, CancellationToken cancellationToken = default) where T : class
+    public async ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string redisKeyPrefix,
+        CancellationToken cancellationToken = default) where T : class
     {
-        List<string>? keys = await GetKeyStringsByPrefixList(redisKeyPrefix, cancellationToken)
-            .NoSync();
+        List<string>? keys = await GetKeyStringsByPrefixList(redisKeyPrefix, cancellationToken).NoSync();
 
         if (keys is null)
             return null;
@@ -43,8 +47,7 @@ public sealed class RedisServerUtil : IRedisServerUtil
 
         foreach (string redisKeyStr in keys)
         {
-            T? result = await _redisUtil.Get<T>(redisKeyStr, cancellationToken)
-                                        .NoSync();
+            T? result = await _redisUtil.Get<T>(redisKeyStr, cancellationToken).NoSync();
 
             if (result is not null)
                 dictionary[redisKeyStr] = result;
@@ -53,11 +56,10 @@ public sealed class RedisServerUtil : IRedisServerUtil
         return dictionary;
     }
 
-    public async ValueTask<Dictionary<string, string>?> GetKeyValuesByPrefixWithoutDeserialization(string redisKeyPrefix,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<Dictionary<string, string>?> GetKeyValuesByPrefixWithoutDeserialization(
+        string redisKeyPrefix, CancellationToken cancellationToken = default)
     {
-        List<string>? keys = await GetKeyStringsByPrefixList(redisKeyPrefix, cancellationToken)
-            .NoSync();
+        List<string>? keys = await GetKeyStringsByPrefixList(redisKeyPrefix, cancellationToken).NoSync();
 
         if (keys is null)
             return null;
@@ -69,8 +71,7 @@ public sealed class RedisServerUtil : IRedisServerUtil
 
         foreach (string redisKeyStr in keys)
         {
-            string? result = await _redisUtil.GetString(redisKeyStr, cancellationToken)
-                                             .NoSync();
+            string? result = await _redisUtil.GetString(redisKeyStr, cancellationToken).NoSync();
 
             if (result is not null)
                 dictionary[redisKeyStr] = result;
@@ -82,8 +83,7 @@ public sealed class RedisServerUtil : IRedisServerUtil
     public async ValueTask<Dictionary<string, T>?> GetKeyValueHashesByPrefix<T>(string redisKeyPrefix, string field,
         CancellationToken cancellationToken = default) where T : class
     {
-        List<string>? keys = await GetKeyStringsByPrefixList(redisKeyPrefix, cancellationToken)
-            .NoSync();
+        List<string>? keys = await GetKeyStringsByPrefixList(redisKeyPrefix, cancellationToken).NoSync();
 
         if (keys is null)
             return null;
@@ -95,8 +95,7 @@ public sealed class RedisServerUtil : IRedisServerUtil
 
         foreach (string redisKeyStr in keys)
         {
-            T? result = await _redisUtil.GetHash<T>(redisKeyStr, field, cancellationToken)
-                                        .NoSync();
+            T? result = await _redisUtil.GetHash<T>(redisKeyStr, field, cancellationToken).NoSync();
 
             if (result is not null)
                 dictionary[redisKeyStr] = result;
@@ -105,69 +104,108 @@ public sealed class RedisServerUtil : IRedisServerUtil
         return dictionary;
     }
 
-    public ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string cacheKey, string? prefix, CancellationToken cancellationToken = default)
-        where T : class
+    public ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string cacheKey, string? prefix,
+        CancellationToken cancellationToken = default) where T : class
     {
         // BuildKey(...) should return a prefix without '*'. We add wildcard exactly once.
         string redisKeyPrefix = RedisUtil.BuildKey(cacheKey, prefix);
         return GetKeyValuesByPrefix<T>(redisKeyPrefix, cancellationToken);
     }
 
-    public ValueTask<Dictionary<string, string>?> GetKeyValuesByPrefixWithoutDeserialization(string cacheKey, string? prefix,
-        CancellationToken cancellationToken = default)
+    public ValueTask<Dictionary<string, string>?> GetKeyValuesByPrefixWithoutDeserialization(string cacheKey,
+        string? prefix, CancellationToken cancellationToken = default)
     {
         string redisKeyPrefix = RedisUtil.BuildKey(cacheKey, prefix);
         return GetKeyValuesByPrefixWithoutDeserialization(redisKeyPrefix, cancellationToken);
     }
 
-    public async ValueTask<IAsyncEnumerable<RedisKey>?> GetKeysByPrefix(string redisKeyPrefix, CancellationToken cancellationToken = default)
+    public async ValueTask<IAsyncEnumerable<RedisKey>?> GetKeysByPrefix(string redisKeyPrefix,
+        CancellationToken cancellationToken = default)
     {
         string pattern = EnsureWildcard(redisKeyPrefix);
 
         RedisValue redisValue = pattern; // implicit conversion
-        return (await _serverClient.Get(cancellationToken)
-                                   .NoSync()).KeysAsync(pattern: redisValue);
+        return (await _serverClient.Get(cancellationToken).NoSync()).KeysAsync(pattern: redisValue);
     }
 
-    public ValueTask<IAsyncEnumerable<RedisKey>?> GetKeysByPrefix(string cacheKey, string? prefix, CancellationToken cancellationToken = default)
+    public ValueTask<IAsyncEnumerable<RedisKey>?> GetKeysByPrefix(string cacheKey, string? prefix,
+        CancellationToken cancellationToken = default)
     {
         string redisKeyPrefix = RedisUtil.BuildKey(cacheKey, prefix);
         return GetKeysByPrefix(redisKeyPrefix, cancellationToken);
     }
 
-    public async ValueTask<List<RedisKey>?> GetKeysByPrefixList(string redisKeyPrefix, CancellationToken cancellationToken = default)
+    public async ValueTask<long> RemoveByScan(string? redisKeyPrefix, Func<RedisKey, bool> shouldRemove,
+        int batchSize = 500, CancellationToken cancellationToken = default)
     {
-        IAsyncEnumerable<RedisKey>? result = await GetKeysByPrefix(redisKeyPrefix, cancellationToken)
-            .NoSync();
+        ArgumentNullException.ThrowIfNull(shouldRemove);
+        ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
+
+        ConnectionMultiplexer connection = await _redisClient.Get(cancellationToken).NoSync();
+        IDatabase database = connection.GetDatabase();
+        RedisValue pattern = string.IsNullOrEmpty(redisKeyPrefix) ? default : EnsureWildcard(redisKeyPrefix);
+        long removed = 0;
+
+        foreach (System.Net.EndPoint endpoint in connection.GetEndPoints())
+        {
+            IServer server = connection.GetServer(endpoint);
+            if (!server.IsConnected || server.IsReplica)
+                continue;
+
+            var keys = new List<RedisKey>(batchSize);
+            await foreach (RedisKey key in server.KeysAsync(database.Database, pattern, pageSize: batchSize)
+                                                 .WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                if (!shouldRemove(key))
+                    continue;
+
+                keys.Add(key);
+                if (keys.Count < batchSize)
+                    continue;
+
+                removed += await DeleteBatch(database, keys, cancellationToken).NoSync();
+            }
+
+            removed += await DeleteBatch(database, keys, cancellationToken).NoSync();
+        }
+
+        return removed;
+    }
+
+    public async ValueTask<List<RedisKey>?> GetKeysByPrefixList(string redisKeyPrefix,
+        CancellationToken cancellationToken = default)
+    {
+        IAsyncEnumerable<RedisKey>? result = await GetKeysByPrefix(redisKeyPrefix, cancellationToken).NoSync();
 
         if (result is null)
             return null;
 
         var list = new List<RedisKey>();
 
-        await foreach (RedisKey item in result.ConfigureAwait(false)
-                                              .WithCancellation(cancellationToken))
+        await foreach (RedisKey item in result.ConfigureAwait(false).WithCancellation(cancellationToken))
             list.Add(item);
 
         return list;
     }
 
-    public ValueTask<List<RedisKey>?> GetKeysByPrefixList(string cacheKey, string? prefix, CancellationToken cancellationToken = default)
+    public ValueTask<List<RedisKey>?> GetKeysByPrefixList(string cacheKey, string? prefix,
+        CancellationToken cancellationToken = default)
     {
         string redisKeyPrefix = RedisUtil.BuildKey(cacheKey, prefix);
         return GetKeysByPrefixList(redisKeyPrefix, cancellationToken);
     }
 
-    public ValueTask RemoveByPrefix(string cacheKey, string? prefix, bool fireAndForget = false, CancellationToken cancellationToken = default)
+    public ValueTask RemoveByPrefix(string cacheKey, string? prefix, bool fireAndForget = false,
+        CancellationToken cancellationToken = default)
     {
         string redisPrefixKey = RedisUtil.BuildKey(cacheKey, prefix);
         return RemoveByPrefix(redisPrefixKey, fireAndForget, cancellationToken);
     }
 
-    public async ValueTask RemoveByPrefix(string redisPrefixKey, bool fireAndForget = false, CancellationToken cancellationToken = default)
+    public async ValueTask RemoveByPrefix(string redisPrefixKey, bool fireAndForget = false,
+        CancellationToken cancellationToken = default)
     {
-        List<string>? keys = await GetKeyStringsByPrefixList(redisPrefixKey, cancellationToken)
-            .NoSync();
+        List<string>? keys = await GetKeyStringsByPrefixList(redisPrefixKey, cancellationToken).NoSync();
 
         if (keys is null || keys.Count == 0)
             return;
@@ -178,8 +216,7 @@ public sealed class RedisServerUtil : IRedisServerUtil
         {
             try
             {
-                await _redisUtil.Remove(keyStr, fireAndForget, cancellationToken)
-                                .NoSync();
+                await _redisUtil.Remove(keyStr, fireAndForget, cancellationToken).NoSync();
             }
             catch (Exception e)
             {
@@ -194,12 +231,9 @@ public sealed class RedisServerUtil : IRedisServerUtil
 
         try
         {
-            IServer client = await _serverClient.Get(cancellationToken)
-                                                .NoSync();
+            IServer client = await _serverClient.Get(cancellationToken).NoSync();
 
-            await client.FlushAllDatabasesAsync()
-                        .WaitAsync(cancellationToken)
-                        .NoSync();
+            await client.FlushAllDatabasesAsync().WaitAsync(cancellationToken).NoSync();
 
             Log.FlushedOk(_logger);
         }
@@ -218,20 +252,45 @@ public sealed class RedisServerUtil : IRedisServerUtil
         return prefixOrPattern + '*';
     }
 
-    private async ValueTask<List<string>?> GetKeyStringsByPrefixList(string redisKeyPrefix, CancellationToken cancellationToken)
+    private async ValueTask<List<string>?> GetKeyStringsByPrefixList(string redisKeyPrefix,
+        CancellationToken cancellationToken)
     {
-        IAsyncEnumerable<RedisKey>? result = await GetKeysByPrefix(redisKeyPrefix, cancellationToken)
-            .NoSync();
+        IAsyncEnumerable<RedisKey>? result = await GetKeysByPrefix(redisKeyPrefix, cancellationToken).NoSync();
 
         if (result is null)
             return null;
 
         var list = new List<string>(64);
 
-        await foreach (RedisKey item in result.ConfigureAwait(false)
-                                              .WithCancellation(cancellationToken))
+        await foreach (RedisKey item in result.ConfigureAwait(false).WithCancellation(cancellationToken))
             list.Add(item.ToString());
 
         return list;
+    }
+
+    private static async ValueTask<long> DeleteBatch(IDatabase database, List<RedisKey> keys,
+        CancellationToken cancellationToken)
+    {
+        if (keys.Count == 0)
+            return 0;
+
+        IBatch batch = database.CreateBatch();
+        var tasks = new Task<bool>[keys.Count];
+        for (var i = 0; i < keys.Count; i++)
+            tasks[i] = batch.KeyDeleteAsync(keys[i]);
+
+        keys.Clear();
+        batch.Execute();
+
+        bool[] results = await Task.WhenAll(tasks).WaitAsync(cancellationToken).NoSync();
+        long removed = 0;
+
+        foreach (bool result in results)
+        {
+            if (result)
+                removed++;
+        }
+
+        return removed;
     }
 }
