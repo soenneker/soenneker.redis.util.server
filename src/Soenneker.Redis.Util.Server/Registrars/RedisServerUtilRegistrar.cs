@@ -14,6 +14,8 @@ public static class RedisServerUtilRegistrar
     /// <summary>
     /// Adds <see cref="IRedisServerUtil"/> as a singleton service. <para/>
     /// </summary>
+    /// <param name="services">Service collection that receives the registration.</param>
+    /// <returns>The same service collection, so additional registrations can be chained.</returns>
     public static IServiceCollection AddRedisServerUtilAsSingleton(this IServiceCollection services)
     {
         services.AddRedisServerClientAsSingleton().AddRedisUtilAsSingleton().TryAddSingleton<IRedisServerUtil, RedisServerUtil>();
@@ -22,10 +24,10 @@ public static class RedisServerUtilRegistrar
     }
 
     /// <summary>
-    /// Adds redis server util as scoped.
+    /// Registers Redis Server Util with a scoped lifetime.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The result of the operation.</returns>
+    /// <param name="services">Service collection that receives the registration.</param>
+    /// <returns>The same service collection, so additional registrations can be chained.</returns>
     public static IServiceCollection AddRedisServerUtilAsScoped(this IServiceCollection services)
     {
         services.AddRedisServerClientAsSingleton().AddRedisUtilAsScoped().TryAddScoped<IRedisServerUtil, RedisServerUtil>();
