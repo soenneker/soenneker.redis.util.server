@@ -7,12 +7,12 @@ using Soenneker.Redis.Util.Server.Abstract;
 namespace Soenneker.Redis.Util.Server.Registrars;
 
 /// <summary>
-/// A utility library for Redis server client accessibility
+/// Registers server-level Redis utilities and their transport dependencies.
 /// </summary>
 public static class RedisServerUtilRegistrar
 {
     /// <summary>
-    /// Adds <see cref="IRedisServerUtil"/> as a singleton service. <para/>
+    /// Adds <see cref="IRedisServerUtil"/> and all Redis dependencies as singleton services.
     /// </summary>
     /// <param name="services">Service collection that receives the registration.</param>
     /// <returns>The same service collection, so additional registrations can be chained.</returns>
@@ -24,7 +24,7 @@ public static class RedisServerUtilRegistrar
     }
 
     /// <summary>
-    /// Registers Redis Server Util with a scoped lifetime.
+    /// Adds a scoped <see cref="IRedisServerUtil"/> while retaining singleton Redis client transports.
     /// </summary>
     /// <param name="services">Service collection that receives the registration.</param>
     /// <returns>The same service collection, so additional registrations can be chained.</returns>

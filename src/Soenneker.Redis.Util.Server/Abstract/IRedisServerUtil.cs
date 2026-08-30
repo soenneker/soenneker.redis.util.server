@@ -8,9 +8,7 @@ using StackExchange.Redis;
 namespace Soenneker.Redis.Util.Server.Abstract;
 
 /// <summary>
-/// A utility library that allows for Redis Server operations <para/>
-/// Warning - all of the methods in here are generally quite heavy and only should be used during special circumstances.<para/>
-/// Scoped IoC
+/// Provides server-level Redis scans, bulk reads, bulk removals, and database flushing.
 /// </summary>
 public interface IRedisServerUtil
 {
@@ -91,7 +89,7 @@ public interface IRedisServerUtil
     /// <param name="redisKeyPrefix">Prefix prepended to Redis keys.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task whose result is the requested async Enumerable.</returns>
-    /// <remarks>Do not include asterisk!</remarks>
+    /// <remarks>A trailing asterisk is added when absent. Other Redis glob-pattern characters are not escaped.</remarks>
     [Pure]
     ValueTask<IAsyncEnumerable<RedisKey>?> GetKeysByPrefix(string redisKeyPrefix, CancellationToken cancellationToken = default);
 
@@ -117,11 +115,11 @@ public interface IRedisServerUtil
     ValueTask<List<RedisKey>?> GetKeysByPrefixList(string redisKeyPrefix, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes by prefix.
+    /// Removes all keys on the selected server endpoint that match the composed prefix.
     /// </summary>
     /// <param name="cacheKey">Base cache key used to build the Redis key.</param>
     /// <param name="prefix">Prefix prepended to generated keys or names.</param>
-    /// <param name="fireAndForget">Whether fire and forget.</param>
+    /// <param name="fireAndForget">Whether to queue each removal instead of waiting for its Redis result.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task that completes when the by prefix removal is complete.</returns>
     ValueTask RemoveByPrefix(string cacheKey, string? prefix, bool fireAndForget = false, CancellationToken cancellationToken = default);
@@ -129,17 +127,18 @@ public interface IRedisServerUtil
     /// <summary>
     /// Removes all keys that begin with the prefix.
     /// </summary>
-    /// <param name="redisPrefixKey">Redis Prefix Key for the remove by prefix operation.</param>
-    /// <param name="fireAndForget">Whether fire and forget.</param>
+    /// <param name="redisPrefixKey">The Redis prefix or glob pattern to remove.</param>
+    /// <param name="fireAndForget">Whether to queue each removal instead of waiting for its Redis result.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task that completes when the by prefix removal is complete.</returns>
-    /// <remarks>Do not include asterisk!</remarks>
+    /// <remarks>A trailing asterisk is added when absent. This is a single-endpoint operation; use <see cref="RemoveByScan"/> for cluster-wide removal.</remarks>
     ValueTask RemoveByPrefix(string redisPrefixKey, bool fireAndForget = false, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Flushes redis Server.
+    /// Flushes all databases on the selected Redis server endpoint.
     /// </summary>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>A task that completes when the flush operation is complete.</returns>
+    /// <returns>A task that completes after the flush attempt.</returns>
+    /// <remarks>Server errors are logged and are not rethrown.</remarks>
     ValueTask Flush(CancellationToken cancellationToken = default);
 }

@@ -1,55 +1,63 @@
 [![](https://img.shields.io/nuget/v/Soenneker.Redis.Util.Server.svg?style=for-the-badge)](https://www.nuget.org/packages/Soenneker.Redis.Util.Server/)
 [![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.redis.util.server/publish-package.yml?style=for-the-badge)](https://github.com/soenneker/soenneker.redis.util.server/actions/workflows/publish-package.yml)
 [![](https://img.shields.io/nuget/dt/Soenneker.Redis.Util.Server.svg?style=for-the-badge)](https://www.nuget.org/packages/Soenneker.Redis.Util.Server/)
+[![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.redis.util.server/build-and-test.yml?label=build%20and%20test&style=for-the-badge)](https://github.com/soenneker/soenneker.redis.util.server/actions/workflows/build-and-test.yml)
 [![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.redis.util.server/codeql.yml?label=CodeQL&style=for-the-badge)](https://github.com/soenneker/soenneker.redis.util.server/actions/workflows/codeql.yml)
 
 # Soenneker.Redis.Util.Server
 
-A utility library that allows for Redis Server operations Warning - all of the methods in here are generally quite heavy and only should be used during special circumstances. Scoped IoC.
+Server-level Redis scanning, bulk lookup, bulk deletion, and database-flush operations.
 
-## Install
+These operations can scan or delete large portions of Redis. Keep them out of request hot paths and restrict access to trusted administrative workflows.
+
+## Installation and registration
 
 ```bash
 dotnet add package Soenneker.Redis.Util.Server
 ```
 
-## Quick start
-
 ```csharp
 using Soenneker.Redis.Util.Server.Registrars;
-using Microsoft.Extensions.DependencyInjection;
 
-var services = new ServiceCollection();
-var result = services.AddRedisServerUtilAsSingleton();
+services.AddRedisServerUtilAsScoped();
 ```
 
-Adds `IRedisServerUtil` as a singleton service.
+The scoped registrar keeps the Redis client and server client singleton while scoping the utility wrappers. Disposing a scope therefore does not close the shared connection.
 
-## What you get
+Configuration uses `Azure:Redis:ConnectionString`, as described by `Soenneker.Redis.Client`. The client enables administrative commands; the Redis credentials still need server permission for operations such as `FLUSHALL`.
 
-- `IRedisServerUtil` — A utility library that allows for Redis Server operations Warning - all of the methods in here are generally quite heavy and only should be used during special circumstances. Scoped IoC.
-- `RedisServerUtilRegistrar` — A utility library for Redis server client accessibility.
+## Read keys by prefix
 
-## API at a glance
+```csharp
+IReadOnlyDictionary<string, Order>? orders =
+    await redisServer.GetKeyValuesByPrefix<Order>("orders", cancellationToken);
 
-| API | What it does | Result / important behavior |
-| --- | --- | --- |
-| `IRedisServerUtil.GetKeyValuesByPrefix(cacheKey, prefix, cancellationToken)` | Deserializes the results and builds a dictionary with the keys and values. | A task whose result is the requested dictionary. |
-| `IRedisServerUtil.GetKeyValuesByPrefix(redisKeyPrefix, cancellationToken)` | Deserializes the results and builds a dictionary with the keys and values. | A task whose result is the requested dictionary. |
-| `IRedisServerUtil.GetKeysByPrefixList(cacheKey, prefix, cancellationToken)` | Immediately resolves the Async IEnumerable. Gets all keys (not values) that begin with the prefix. | The matching keys as a materialized collection. |
-| `IRedisServerUtil.GetKeysByPrefix(redisKeyPrefix, cancellationToken)` | Gets all keys (not values) that begin with the prefix. | A task whose result is the requested async Enumerable. |
-| `IRedisServerUtil.RemoveByScan(redisKeyPrefix, shouldRemove, batchSize, cancellationToken)` | Scans primary Redis endpoints and removes matching keys in pipelined batches. | The number of keys removed. |
-| `IRedisServerUtil.GetKeysByPrefixList(redisKeyPrefix, cancellationToken)` | Wraps `GetKeysByPrefix(string, CancellationToken)`. Base method for `GetKeysByPrefixList(string, CancellationToken)`. Immediately resolves the Async IEnumerable. | The matching keys as a materialized collection. |
-| `IRedisServerUtil.RemoveByPrefix(redisPrefixKey, fireAndForget, cancellationToken)` | Removes all keys that begin with the prefix. | A task that completes when the by prefix removal is complete. |
-| `IRedisServerUtil.Flush(cancellationToken)` | Flushes redis Server. | A task that completes when the flush operation is complete. |
-| `RedisServerUtilRegistrar.AddRedisServerUtilAsSingleton(services)` | Adds `IRedisServerUtil` as a singleton service. | The same service collection, so additional registrations can be chained. |
-| `RedisServerUtilRegistrar.AddRedisServerUtilAsScoped(services)` | Registers Redis Server Util with a scoped lifetime. | The same service collection, so additional registrations can be chained. |
+List<RedisKey>? keys =
+    await redisServer.GetKeysByPrefixList("orders:pending", cancellationToken);
+```
 
-## Important behavior
+The utility appends a trailing `*` when one is absent. Prefix strings are Redis glob patterns, so characters such as `?`, `[`, and `]` retain their Redis pattern meaning. The prefix lookup methods use the server endpoint selected by `IRedisServerClient`; they are not a cluster-wide aggregation.
 
-- `IRedisServerUtil.GetKeysByPrefix(redisKeyPrefix, cancellationToken)`: Do not include asterisk!.
-- `IRedisServerUtil.RemoveByPrefix(redisPrefixKey, fireAndForget, cancellationToken)`: Do not include asterisk!.
+## Remove keys across writable endpoints
 
-## Practical notes
+For cluster-aware cleanup, prefer `RemoveByScan`. It scans every connected non-replica endpoint and pipelines matching deletes:
 
-- Cancellation stops pending work; it does not undo work that has already completed.
+```csharp
+long removed = await redisServer.RemoveByScan(
+    "sessions:",
+    key => key.ToString().EndsWith(":expired", StringComparison.Ordinal),
+    batchSize: 500,
+    cancellationToken);
+```
+
+A `null` or empty prefix scans all keys, leaving `shouldRemove` as the only filter. Keep the predicate narrow and test it before using this against production data.
+
+`RemoveByPrefix` is the older single-endpoint path. Its `fireAndForget` parameter queues individual removals through `IRedisUtil`; use `false` when completion matters.
+
+## Flush
+
+```csharp
+await redisServer.Flush(cancellationToken);
+```
+
+`Flush` issues `FLUSHALL` to the selected server endpoint and destroys all databases on that server. The method logs server failures rather than returning a success result or rethrowing them, so verify the resulting state when an administrative workflow requires confirmation.
