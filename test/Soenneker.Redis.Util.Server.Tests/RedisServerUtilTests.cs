@@ -22,15 +22,15 @@ public class RedisServerUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async System.Threading.Tasks.ValueTask Flush_should_flush()
+    public async System.Threading.Tasks.ValueTask Flush_should_flush(CancellationToken cancellationToken)
     {
         var redisClient = Resolve<IRedisServerUtil>();
 
-       await redisClient.Flush(System.Threading.CancellationToken.None);
+       await redisClient.Flush(cancellationToken);
     }
 
     [Test]
-    public async Task RemoveByScan_should_filter_and_delete_in_batches()
+    public async Task RemoveByScan_should_filter_and_delete_in_batches(CancellationToken cancellationToken)
     {
         string prefix = $"redis-server-util-test:{Guid.NewGuid():N}:";
         RedisKey removedOne = $"{prefix}remove:1";
@@ -45,7 +45,7 @@ public class RedisServerUtilTests : HostedUnitTest
             await database.StringSetAsync(removedTwo, "two");
             await database.StringSetAsync(retained, "retained");
 
-            long removed = await _redisServerUtil.RemoveByScan(prefix, key => key != retained, 1, CancellationToken.None);
+            long removed = await _redisServerUtil.RemoveByScan(prefix, key => key != retained, 1, cancellationToken);
 
             removed.Should().Be(2);
             (await database.KeyExistsAsync(removedOne)).Should().BeFalse();
