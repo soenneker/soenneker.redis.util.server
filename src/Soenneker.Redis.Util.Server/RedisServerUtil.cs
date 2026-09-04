@@ -16,6 +16,7 @@ using StackExchange.Redis;
 
 namespace Soenneker.Redis.Util.Server;
 
+/// <inheritdoc cref="IRedisServerUtil" />
 public sealed class RedisServerUtil : IRedisServerUtil
 {
     private readonly ILogger<RedisServerUtil> _logger;
