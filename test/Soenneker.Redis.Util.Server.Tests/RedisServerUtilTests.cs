@@ -1,8 +1,10 @@
 using System;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AwesomeAssertions;
 using Soenneker.Redis.Client.Abstract;
+using Soenneker.Redis.Util.Abstract;
 using Soenneker.Redis.Util.Server.Abstract;
 using Soenneker.Tests.HostedUnit;
 using StackExchange.Redis;
@@ -19,6 +21,44 @@ public class RedisServerUtilTests : HostedUnitTest
     {
         _redisServerUtil = Resolve<IRedisServerUtil>(true);
         _redisClient = Resolve<IRedisClient>(true);
+    }
+
+    [Test]
+    public async Task Prefix_reads_should_use_supplied_metadata(CancellationToken cancellationToken)
+    {
+        string prefix = $"redis-server-metadata-test:{Guid.NewGuid():N}:";
+        string valueKey = $"{prefix}values:one";
+        string hashKey = $"{prefix}hashes:one";
+        var context = new TestJsonContext(new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        });
+        var typeInfo = context.MetadataDocument;
+        var document = new MetadataDocument { DisplayName = "Metadata payload" };
+        var redis = Resolve<IRedisUtil>();
+
+        try
+        {
+            await redis.Set(valueKey, document, typeInfo, cancellationToken: cancellationToken);
+            await redis.SetHash(hashKey, "document", JsonSerializer.Serialize(document, typeInfo), cancellationToken: cancellationToken);
+
+            var values = await _redisServerUtil.GetKeyValuesByPrefix($"{prefix}values:", typeInfo, cancellationToken);
+            values.Should().NotBeNull();
+            values![valueKey].DisplayName.Should().Be(document.DisplayName);
+
+            var composedValues = await _redisServerUtil.GetKeyValuesByPrefix(prefix.TrimEnd(':'), "values", typeInfo, cancellationToken);
+            composedValues.Should().NotBeNull();
+            composedValues![valueKey].DisplayName.Should().Be(document.DisplayName);
+
+            var hashes = await _redisServerUtil.GetKeyValueHashesByPrefix($"{prefix}hashes:", "document", typeInfo, cancellationToken);
+            hashes.Should().NotBeNull();
+            hashes![hashKey].DisplayName.Should().Be(document.DisplayName);
+        }
+        finally
+        {
+            await redis.Remove(valueKey, cancellationToken: CancellationToken.None);
+            await redis.Remove(hashKey, cancellationToken: CancellationToken.None);
+        }
     }
 
     [Test]

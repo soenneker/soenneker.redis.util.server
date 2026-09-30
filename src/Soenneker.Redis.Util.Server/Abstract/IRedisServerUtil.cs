@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization.Metadata;
 using System.Diagnostics.Contracts;
 using System;
 using System.Threading;
@@ -21,7 +23,21 @@ public interface IRedisServerUtil
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task whose result is the requested dictionary.</returns>
     [Pure]
+    [RequiresUnreferencedCode("Reflection-based JSON deserialization requires preserved payload types. Use the overload accepting JsonTypeInfo<T> instead.")]
+    [RequiresDynamicCode("Reflection-based JSON deserialization may require runtime code generation. Use the overload accepting JsonTypeInfo<T> instead.")]
     ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string cacheKey, string? prefix, CancellationToken cancellationToken = default) where T : class;
+
+    /// <summary>
+    /// Deserializes the results and builds a dictionary with the keys and values.
+    /// </summary>
+    /// <param name="typeInfo">Generated JSON metadata used to deserialize each value.</param>
+    /// <typeparam name="T">Type of value handled by the Redis Server.</typeparam>
+    /// <param name="cacheKey">Base cache key used to build the Redis key.</param>
+    /// <param name="prefix">Prefix prepended to generated keys or names.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>A task whose result is the requested dictionary.</returns>
+    [Pure]
+    ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string cacheKey, string? prefix, JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken = default) where T : class;
 
     /// <summary>
     /// Gets key values by prefix without deserialization.
@@ -41,7 +57,20 @@ public interface IRedisServerUtil
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task whose result is the requested dictionary.</returns>
     [Pure]
+    [RequiresUnreferencedCode("Reflection-based JSON deserialization requires preserved payload types. Use the overload accepting JsonTypeInfo<T> instead.")]
+    [RequiresDynamicCode("Reflection-based JSON deserialization may require runtime code generation. Use the overload accepting JsonTypeInfo<T> instead.")]
     ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string redisKeyPrefix, CancellationToken cancellationToken = default) where T : class;
+
+    /// <summary>
+    /// Deserializes the results and builds a dictionary with the keys and values.
+    /// </summary>
+    /// <param name="typeInfo">Generated JSON metadata used to deserialize each value.</param>
+    /// <typeparam name="T">Type of value handled by the Redis Server.</typeparam>
+    /// <param name="redisKeyPrefix">Prefix prepended to Redis keys.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>A task whose result is the requested dictionary.</returns>
+    [Pure]
+    ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string redisKeyPrefix, JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken = default) where T : class;
 
     /// <summary>
     /// Gets key values by prefix without deserialization.
@@ -61,7 +90,21 @@ public interface IRedisServerUtil
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task whose result is the requested dictionary.</returns>
     [Pure]
+    [RequiresUnreferencedCode("Reflection-based JSON deserialization requires preserved payload types. Use the overload accepting JsonTypeInfo<T> instead.")]
+    [RequiresDynamicCode("Reflection-based JSON deserialization may require runtime code generation. Use the overload accepting JsonTypeInfo<T> instead.")]
     ValueTask<Dictionary<string, T>?> GetKeyValueHashesByPrefix<T>(string redisKeyPrefix, string field, CancellationToken cancellationToken = default) where T : class;
+
+    /// <summary>
+    /// Gets key value hashes by prefix.
+    /// </summary>
+    /// <param name="typeInfo">Generated JSON metadata used to deserialize each value.</param>
+    /// <typeparam name="T">Type of value handled by the Redis Server.</typeparam>
+    /// <param name="redisKeyPrefix">Prefix prepended to Redis keys.</param>
+    /// <param name="field">Hash field to read, write, or remove.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>A task whose result is the requested dictionary.</returns>
+    [Pure]
+    ValueTask<Dictionary<string, T>?> GetKeyValueHashesByPrefix<T>(string redisKeyPrefix, string field, JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken = default) where T : class;
 
     /// <summary>
     /// Immediately resolves the Async IEnumerable. Gets all keys (not values) that begin with the prefix.

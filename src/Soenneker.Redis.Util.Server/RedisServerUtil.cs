@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization.Metadata;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -16,7 +18,6 @@ using StackExchange.Redis;
 
 namespace Soenneker.Redis.Util.Server;
 
-/// <inheritdoc cref="IRedisServerUtil" />
 public sealed class RedisServerUtil : IRedisServerUtil
 {
     private readonly ILogger<RedisServerUtil> _logger;
@@ -33,6 +34,8 @@ public sealed class RedisServerUtil : IRedisServerUtil
         _redisClient = redisClient;
     }
 
+    [RequiresUnreferencedCode("Reflection-based JSON deserialization requires preserved payload types. Use the overload accepting JsonTypeInfo<T> instead.")]
+    [RequiresDynamicCode("Reflection-based JSON deserialization may require runtime code generation. Use the overload accepting JsonTypeInfo<T> instead.")]
     public async ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string redisKeyPrefix,
         CancellationToken cancellationToken = default) where T : class
     {
@@ -49,6 +52,32 @@ public sealed class RedisServerUtil : IRedisServerUtil
         foreach (string redisKeyStr in keys)
         {
             T? result = await _redisUtil.Get<T>(redisKeyStr, cancellationToken).NoSync();
+
+            if (result is not null)
+                dictionary[redisKeyStr] = result;
+        }
+
+        return dictionary;
+    }
+
+    public async ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string redisKeyPrefix,
+        JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken = default) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(typeInfo);
+
+        List<string>? keys = await GetKeyStringsByPrefixList(redisKeyPrefix, cancellationToken).NoSync();
+
+        if (keys is null)
+            return null;
+
+        if (keys.Count == 0)
+            return new Dictionary<string, T>(0);
+
+        var dictionary = new Dictionary<string, T>(keys.Count);
+
+        foreach (string redisKeyStr in keys)
+        {
+            T? result = await _redisUtil.Get(redisKeyStr, typeInfo, cancellationToken).NoSync();
 
             if (result is not null)
                 dictionary[redisKeyStr] = result;
@@ -81,6 +110,8 @@ public sealed class RedisServerUtil : IRedisServerUtil
         return dictionary;
     }
 
+    [RequiresUnreferencedCode("Reflection-based JSON deserialization requires preserved payload types. Use the overload accepting JsonTypeInfo<T> instead.")]
+    [RequiresDynamicCode("Reflection-based JSON deserialization may require runtime code generation. Use the overload accepting JsonTypeInfo<T> instead.")]
     public async ValueTask<Dictionary<string, T>?> GetKeyValueHashesByPrefix<T>(string redisKeyPrefix, string field,
         CancellationToken cancellationToken = default) where T : class
     {
@@ -105,12 +136,50 @@ public sealed class RedisServerUtil : IRedisServerUtil
         return dictionary;
     }
 
+    public async ValueTask<Dictionary<string, T>?> GetKeyValueHashesByPrefix<T>(string redisKeyPrefix, string field,
+        JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken = default) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(typeInfo);
+
+        List<string>? keys = await GetKeyStringsByPrefixList(redisKeyPrefix, cancellationToken).NoSync();
+
+        if (keys is null)
+            return null;
+
+        if (keys.Count == 0)
+            return new Dictionary<string, T>(0);
+
+        var dictionary = new Dictionary<string, T>(keys.Count);
+
+        foreach (string redisKeyStr in keys)
+        {
+            T? result = await _redisUtil.GetHash(redisKeyStr, field, typeInfo, cancellationToken).NoSync();
+
+            if (result is not null)
+                dictionary[redisKeyStr] = result;
+        }
+
+        return dictionary;
+    }
+
+    [RequiresUnreferencedCode("Reflection-based JSON deserialization requires preserved payload types. Use the overload accepting JsonTypeInfo<T> instead.")]
+    [RequiresDynamicCode("Reflection-based JSON deserialization may require runtime code generation. Use the overload accepting JsonTypeInfo<T> instead.")]
     public ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string cacheKey, string? prefix,
         CancellationToken cancellationToken = default) where T : class
     {
         // BuildKey(...) should return a prefix without '*'. We add wildcard exactly once.
         string redisKeyPrefix = RedisUtil.BuildKey(cacheKey, prefix);
         return GetKeyValuesByPrefix<T>(redisKeyPrefix, cancellationToken);
+    }
+
+    public ValueTask<Dictionary<string, T>?> GetKeyValuesByPrefix<T>(string cacheKey, string? prefix,
+        JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken = default) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(typeInfo);
+
+        // BuildKey(...) should return a prefix without '*'. We add wildcard exactly once.
+        string redisKeyPrefix = RedisUtil.BuildKey(cacheKey, prefix);
+        return GetKeyValuesByPrefix(redisKeyPrefix, typeInfo, cancellationToken);
     }
 
     public ValueTask<Dictionary<string, string>?> GetKeyValuesByPrefixWithoutDeserialization(string cacheKey,
