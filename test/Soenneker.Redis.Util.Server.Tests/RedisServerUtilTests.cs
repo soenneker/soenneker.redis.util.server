@@ -24,7 +24,7 @@ public class RedisServerUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Prefix_reads_should_use_supplied_metadata(CancellationToken cancellationToken)
+    public async ValueTask Prefix_reads_should_use_supplied_metadata(CancellationToken cancellationToken)
     {
         string prefix = $"redis-server-metadata-test:{Guid.NewGuid():N}:";
         string valueKey = $"{prefix}values:one";
@@ -70,7 +70,7 @@ public class RedisServerUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task RemoveByScan_should_filter_and_delete_in_batches(CancellationToken cancellationToken)
+    public async ValueTask RemoveByScan_should_filter_and_delete_in_batches(CancellationToken cancellationToken)
     {
         string prefix = $"redis-server-util-test:{Guid.NewGuid():N}:";
         RedisKey removedOne = $"{prefix}remove:1";
