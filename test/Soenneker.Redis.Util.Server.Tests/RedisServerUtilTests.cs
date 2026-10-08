@@ -76,7 +76,7 @@ public class RedisServerUtilTests : HostedUnitTest
         RedisKey removedOne = $"{prefix}remove:1";
         RedisKey removedTwo = $"{prefix}remove:2";
         RedisKey retained = $"{prefix}retain";
-        ConnectionMultiplexer connection = await _redisClient.Get(CancellationToken.None);
+        ConnectionMultiplexer connection = await _redisClient.Get(cancellationToken);
         IDatabase database = connection.GetDatabase();
 
         try
